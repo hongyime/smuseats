@@ -40,6 +40,7 @@ on:
       - "**/package-lock.json"
       - "**/requirements*.txt"
       - "**/pyproject.toml"
+      - ".github/workflows/codeql.yml"
   schedule:
     - cron: "0 14 * * 3" # Weekly Wed 10 PM SGT (off Monday spike)
 
@@ -61,11 +62,36 @@ jobs:
     if: github.event.repository.private == false
     runs-on: ubuntu-latest
     outputs:
-      languages: ${{ steps.langs.outputs.languages }}
-      any: ${{ steps.langs.outputs.any }}
+      languages: ${{ steps.langs.outputs.languages || '[]' }}
+      any: ${{ steps.langs.outputs.any || 'false' }}
     steps:
+      # GitHub rejects advanced-analysis uploads while default setup is enabled.
+      # Keep the default scans active and avoid the duplicate checkout/matrix.
+      - name: Check which CodeQL setup owns scanning
+        id: mode
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mode="$(gh api "repos/$GITHUB_REPOSITORY/code-scanning/default-setup" --jq .state)"
+          case "$mode" in
+            configured)
+              echo "enabled=false" >> "$GITHUB_OUTPUT"
+              echo "GitHub default CodeQL setup owns scanning; no duplicate advanced scan is needed." >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            not-configured)
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unexpected CodeQL setup state; refusing to silently skip scanning." >&2
+              exit 1
+              ;;
+          esac
       - uses: actions/checkout@v7
+        if: steps.mode.outputs.enabled == 'true'
       - name: Detect languages
+        if: steps.mode.outputs.enabled == 'true'
         id: langs
         shell: bash
         run: |
