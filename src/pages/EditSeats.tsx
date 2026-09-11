@@ -95,6 +95,10 @@ const EditSeats = () => {
 
   const handleMoveSeat = useCallback(
     (id: string, x: number, y: number) => {
+      const seat = room.seats.find((candidate) => candidate.id === id);
+      const nextX = Math.max(0, Math.min(room.width, x));
+      const nextY = Math.max(0, Math.min(room.height, y));
+      if (!seat || (seat.x === nextX && seat.y === nextY)) return;
       pushUndo();
       markModified();
       setRooms((prev) =>
@@ -103,14 +107,14 @@ const EditSeats = () => {
             ? {
                 ...r,
                 seats: r.seats.map((s) =>
-                  s.id === id ? { ...s, x, y } : s,
+                  s.id === id ? { ...s, x: nextX, y: nextY } : s,
                 ),
               }
             : r,
         ),
       );
     },
-    [currentRoomIdx, pushUndo, markModified],
+    [currentRoomIdx, room.seats, room.width, room.height, pushUndo, markModified],
   );
 
   const handleDeleteSeat = useCallback(() => {
@@ -198,22 +202,7 @@ const EditSeats = () => {
 
         const seat = room.seats.find((s) => s.id === selectedSeatId);
         if (seat) {
-          pushUndo();
-          markModified();
-          setRooms((prev) =>
-            prev.map((r, i) =>
-              i === currentRoomIdx
-                ? {
-                    ...r,
-                    seats: r.seats.map((s) =>
-                      s.id === selectedSeatId
-                        ? { ...s, x: s.x + dx, y: s.y + dy }
-                        : s,
-                    ),
-                  }
-                : r,
-            ),
-          );
+          handleMoveSeat(seat.id, seat.x + dx, seat.y + dy);
         }
       }
     };
@@ -225,9 +214,7 @@ const EditSeats = () => {
     handleDeleteSeat,
     handleUndo,
     room.seats,
-    currentRoomIdx,
-    pushUndo,
-    markModified,
+    handleMoveSeat,
   ]);
 
   /* reset on room change */

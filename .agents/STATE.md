@@ -7,3 +7,20 @@ Released through [PR #187](https://github.com/hongyime/smuseats/pull/187), main 
 - Validation: lint, the type-checked build, all 98 registry checks and fourteen final browser scenarios pass locally and in hosted CI. All 6,364 seats and floor plans are preserved. Seven transitive minor/patch updates clear the audit; GitHub marked the browserslist alert fixed.
 - Scanning: GitHub default CodeQL stays active. `CODEQL_SETUP=default` skips the duplicate advanced workflow before runner allocation; changing scanning modes also requires updating this repository variable. All applicable final application checks pass.
 - Remaining: deeper editor/import/pan/zoom review, shared workflow propagation and portfolio storage/capacity work. URL sharing remains outside Supabase; names are visible to anyone with the link. No monthly savings or completed data migration is claimed.
+
+
+## Portfolio upkeep task list — 2026-09-11
+
+- [x] Reproduce cancelled pointer edits, keyboard coordinate bounds and editor/viewer pan/zoom behavior with synthetic local sessions.
+- [x] Repair confirmed interaction defects and retain all existing room/seat data and URL-sharing behavior.
+- [x] Verify desktop/mobile editor/export and viewer controls, registry integrity, lint/build and targeted regressions.
+- [ ] Pass hosted checks, release to existing production without enabling contributor features, and update both portfolio plan formats.
+
+
+### Editor and map gesture repair — verified locally
+
+Cancelled or lost pointer capture previously committed contributor edits; keyboard nudges could place seats outside the floor plan; moving both touch points together did not move the public map. Separate cancellation from commit, retain the active pointer/last drag preview, clamp coordinates centrally without adding no-op undo entries, and transform two-finger gestures from their starting midpoint and viewport.
+
+Sixteen contributor/gesture browser cases and fourteen existing sharing cases pass at desktop/mobile widths. Lint, registry checks and the production build pass. All 400 original data/asset files retain their bytes and the committed data is unchanged; four fresh-checkout text files use the LF endings required by .gitattributes, with identical content. All 98 rooms and 6,364 seats remain intact.
+
+The contributor editor remains disabled in production. CI enables it only for an isolated dist-editor fixture and uploads compact result evidence. Hosted checks and production verification follow. Shared styling and wider interaction review remain open.

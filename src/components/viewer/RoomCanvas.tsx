@@ -60,7 +60,7 @@ export function RoomCanvas({
 
   /** Track active pointers for pinch-to-zoom */
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
-  const pinchRef = useRef<{ dist: number; zoom: number; midX: number; midY: number } | null>(null);
+  const pinchRef = useRef<{ dist: number; zoom: number; midX: number; midY: number; panX: number; panY: number } | null>(null);
 
   const frameRef = useRef<HTMLDivElement>(null);
 
@@ -97,7 +97,9 @@ export function RoomCanvas({
       const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
       const midX = (pts[0].x + pts[1].x) / 2;
       const midY = (pts[0].y + pts[1].y) / 2;
-      pinchRef.current = { dist, zoom: viewport.zoom, midX, midY };
+      pinchRef.current = dist > 0
+        ? { dist, zoom: viewport.zoom, midX, midY, panX: viewport.panX, panY: viewport.panY }
+        : null;
       return;
     }
 
@@ -135,11 +137,13 @@ export function RoomCanvas({
         const midY = (pts[0].y + pts[1].y) / 2;
         const cx = midX - rect.left;
         const cy = midY - rect.top;
-        const zoomRatio = newZoom / viewport.zoom;
+        const zoomRatio = newZoom / pinchRef.current.zoom;
+        const originX = pinchRef.current.midX - rect.left;
+        const originY = pinchRef.current.midY - rect.top;
         setViewport({
           zoom: newZoom,
-          panX: cx - zoomRatio * (cx - viewport.panX),
-          panY: cy - zoomRatio * (cy - viewport.panY),
+          panX: cx - zoomRatio * (originX - pinchRef.current.panX),
+          panY: cy - zoomRatio * (originY - pinchRef.current.panY),
         });
       }
       return;

@@ -62,6 +62,7 @@ export function SeatEditorCanvas({
   const frameRef = useRef<HTMLDivElement>(null);
 
   const pointerRef = useRef<{
+    pointerId: number;
     startX: number;
     startY: number;
     type: 'pan' | 'seat';
@@ -70,11 +71,16 @@ export function SeatEditorCanvas({
     panStartY: number;
   } | null>(null);
   const movedRef = useRef(false);
+  const dragSeatRef = useRef<{ id: string; x: number; y: number } | null>(null);
 
   /* reset viewport when room changes */
   useEffect(() => {
     setViewport({ zoom: 1, panX: 0, panY: 0 });
     setDragSeat(null);
+    setIsDragging(false);
+    pointerRef.current = null;
+    dragSeatRef.current = null;
+    movedRef.current = false;
   }, [imageUrl]);
 
   /* native wheel handler — React synthetic wheel events are passive */
@@ -109,9 +115,17 @@ export function SeatEditorCanvas({
 
   /* ========  pointer handling  ======== */
 
+  const resetGesture = useCallback(() => {
+    pointerRef.current = null;
+    dragSeatRef.current = null;
+    movedRef.current = false;
+    setDragSeat(null);
+    setIsDragging(false);
+  }, []);
+
   const handlePointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
-      if (e.button !== 0) return;
+      if (e.button !== 0 || pointerRef.current) return;
       movedRef.current = false;
 
       const seatEl = (e.target as Element).closest(
@@ -121,6 +135,7 @@ export function SeatEditorCanvas({
       if (seatEl) {
         onSelectSeat(seatEl.dataset.seatId!);
         pointerRef.current = {
+          pointerId: e.pointerId,
           startX: e.clientX,
           startY: e.clientY,
           type: 'seat',
@@ -130,6 +145,7 @@ export function SeatEditorCanvas({
         };
       } else {
         pointerRef.current = {
+          pointerId: e.pointerId,
           startX: e.clientX,
           startY: e.clientY,
           type: 'pan',
@@ -146,7 +162,7 @@ export function SeatEditorCanvas({
   const handlePointerMove = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
       const info = pointerRef.current;
-      if (!info) return;
+      if (!info || info.pointerId !== e.pointerId) return;
 
       const dist = Math.hypot(
         e.clientX - info.startX,
@@ -166,11 +182,13 @@ export function SeatEditorCanvas({
       } else if (info.seatId) {
         const svgPt = clientToSvg(e.clientX, e.clientY);
         if (svgPt) {
-          setDragSeat({
+          const next = {
             id: info.seatId,
             x: Math.max(0, Math.min(width, svgPt.x)),
             y: Math.max(0, Math.min(height, svgPt.y)),
-          });
+          };
+          dragSeatRef.current = next;
+          setDragSeat(next);
         }
       }
     },
@@ -179,11 +197,20 @@ export function SeatEditorCanvas({
 
   const handlePointerUp = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
+      const info = pointerRef.current;
+      if (!info || info.pointerId !== e.pointerId) return;
+      // Clear the active pointer before releasing capture: lost capture must
+      // cancel an unfinished gesture, not a pointer-up that already committed.
+      // Capture can also be released before the browser has emitted its first
+      // got/lost-capture event. That unfinished gesture must not commit either.
+      if (!e.currentTarget.hasPointerCapture(e.pointerId)) {
+        resetGesture();
+        return;
+      }
+      pointerRef.current = null;
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId);
       }
-
-      const info = pointerRef.current;
 
       /* click (no drag) */
       if (!movedRef.current && info) {
@@ -207,14 +234,12 @@ export function SeatEditorCanvas({
       }
 
       /* commit seat drag */
-      if (dragSeat && movedRef.current) {
-        onMoveSeat(dragSeat.id, dragSeat.x, dragSeat.y);
+      const finalSeat = dragSeatRef.current;
+      if (finalSeat && movedRef.current) {
+        onMoveSeat(finalSeat.id, finalSeat.x, finalSeat.y);
       }
 
-      setDragSeat(null);
-      setIsDragging(false);
-      pointerRef.current = null;
-      movedRef.current = false;
+      resetGesture();
     },
     [
       addMode,
@@ -224,9 +249,18 @@ export function SeatEditorCanvas({
       onAddSeat,
       onSelectSeat,
       onMoveSeat,
-      dragSeat,
+      resetGesture,
     ],
   );
+
+  const cancelPointer = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    const info = pointerRef.current;
+    if (!info || info.pointerId !== e.pointerId) return;
+    resetGesture();
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  }, [resetGesture]);
 
   /* ========  derived rendering data  ======== */
 
@@ -259,7 +293,8 @@ export function SeatEditorCanvas({
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
+        onPointerCancel={cancelPointer}
+        onLostPointerCapture={cancelPointer}
       >
         <div
           className="editor-canvas-content"
