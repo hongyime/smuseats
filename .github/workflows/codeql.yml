@@ -59,39 +59,18 @@ jobs:
   # did a full checkout (~30-60s each) before exiting — ~100 wasted min/week
   # on push-heavy private repos like unifiedcollector.
   detect:
-    if: github.event.repository.private == false
+    # This repository uses GitHub default setup (CODEQL_SETUP=default).
+    # Its default scans remain active. Clear/change that repository variable
+    # when intentionally switching to this advanced workflow. Checking the
+    # default-setup API here would require admin access the workflow lacks.
+    if: github.event.repository.private == false && vars.CODEQL_SETUP != 'default'
     runs-on: ubuntu-latest
     outputs:
       languages: ${{ steps.langs.outputs.languages || '[]' }}
       any: ${{ steps.langs.outputs.any || 'false' }}
     steps:
-      # GitHub rejects advanced-analysis uploads while default setup is enabled.
-      # Keep the default scans active and avoid the duplicate checkout/matrix.
-      - name: Check which CodeQL setup owns scanning
-        id: mode
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          mode="$(gh api "repos/$GITHUB_REPOSITORY/code-scanning/default-setup" --jq .state)"
-          case "$mode" in
-            configured)
-              echo "enabled=false" >> "$GITHUB_OUTPUT"
-              echo "GitHub default CodeQL setup owns scanning; no duplicate advanced scan is needed." >> "$GITHUB_STEP_SUMMARY"
-              ;;
-            not-configured)
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-              ;;
-            *)
-              echo "Unexpected CodeQL setup state; refusing to silently skip scanning." >&2
-              exit 1
-              ;;
-          esac
       - uses: actions/checkout@v7
-        if: steps.mode.outputs.enabled == 'true'
       - name: Detect languages
-        if: steps.mode.outputs.enabled == 'true'
         id: langs
         shell: bash
         run: |
