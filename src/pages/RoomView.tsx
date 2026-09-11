@@ -8,7 +8,7 @@
  * see the same selection.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 
 import registry from '../data/registry.json';
 import { useUrlState, type SeatValue } from '../hooks/useUrlState';
@@ -48,10 +48,12 @@ const toRoomConfig = (room: RegistryRoom, seatData: Record<string, SeatValue>): 
 
 const RoomView = () => {
   const { roomId } = useParams<{ roomId: string }>();
-  const navigate = useNavigate();
-  const { state, isUrlWriteLimited, setRoomId, setSeatValue, setSeatData } = useUrlState();
+  const location = useLocation();
+  const { state, isUrlWriteLimited, shareUrl, urlError, setSeatValue, setSeatData } = useUrlState(roomId ?? '');
   const [selectedSeatId, setSelectedSeatId] = useState<string | undefined>();
-  const [copied, setCopied] = useState(false);
+  const [copyResult, setCopyResult] = useState<{ url: string; status: 'copying' | 'copied' | 'denied' } | null>(null);
+  const copyStatus = copyResult?.url === shareUrl ? copyResult?.status : null;
+  const copied = copyStatus === 'copied';
 
   /* ---- Zoom state (controlled from right panel) ---- */
   const [viewport, setViewport] = useState<ViewportState>({ zoom: 1, panX: 0, panY: 0 });
@@ -77,20 +79,6 @@ const RoomView = () => {
   }, [registryRoom]);
 
   useEffect(() => {
-    if (!roomId) return;
-
-    if (state.r && state.r !== roomId) {
-      navigate(`/room/${state.r}`, { replace: true });
-      return;
-    }
-
-    if (state.r !== roomId) {
-      setRoomId(roomId);
-      setSeatData({});
-    }
-  }, [navigate, roomId, setRoomId, setSeatData, state.r]);
-
-  useEffect(() => {
     setSelectedSeatId(undefined);
     setViewport({ zoom: 1, panX: 0, panY: 0 });
     setIsSidebarOpen(false); // Close sidebar on room change
@@ -111,11 +99,16 @@ const RoomView = () => {
   );
 
   const handleCopyLink = useCallback(async () => {
-    if (typeof window === 'undefined' || !navigator.clipboard) return;
-    await navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
-  }, []);
+    if (!shareUrl) return;
+    setCopyResult({ url: shareUrl, status: 'copying' });
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(shareUrl);
+      setCopyResult({ url: shareUrl, status: 'copied' });
+    } catch {
+      setCopyResult({ url: shareUrl, status: 'denied' });
+    }
+  }, [shareUrl]);
 
   const handleClearAll = useCallback(() => {
     setSeatData({});
@@ -134,11 +127,15 @@ const RoomView = () => {
     }));
   }, [state.d]);
 
-  if (!room) {
+  if (state.r !== roomId && registry.rooms.some((entry) => entry.id === state.r)) {
+    return <Navigate to={{ pathname: `/room/${encodeURIComponent(state.r)}`, search: location.search, hash: location.hash }} replace state={location.state} />;
+  }
+
+  if (!room || state.r !== roomId) {
     return (
       <main style={{ padding: 24 }}>
         <h1>Room not found</h1>
-        <p>We could not find room: {roomId}</p>
+        <p>We could not find room: {state.r || roomId}</p>
         <Link to="/">Back home</Link>
       </main>
     );
@@ -176,7 +173,7 @@ const RoomView = () => {
           <button type="button" className="btn btn--secondary banner-btn-reset" onClick={zoomReset}>
             Reset
           </button>
-          <button type="button" className="btn btn--primary banner-btn-copy" onClick={handleCopyLink}>
+          <button type="button" className="btn btn--primary banner-btn-copy" onClick={handleCopyLink} disabled={!shareUrl || copyStatus === 'copying'} aria-label={copied ? 'Link copied' : 'Share selection'}>
             {copied ? (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12"></polyline>
@@ -192,11 +189,18 @@ const RoomView = () => {
         </div>
       </div>
 
+      <p className="share-notice" role="status" aria-live="polite">
+        {urlError ?? (copyStatus === 'denied'
+          ? 'Copy was blocked. Copy the link from your address bar, or try Share again.'
+          : copied ? 'Selection link copied.' : '')}
+      </p>
+
       <SelectedSeatsSidebar
         isOpen={isSidebarOpen}
         selectedSeatId={selectedSeatId}
         selectedEntries={selectedEntries}
         isUrlWriteLimited={isUrlWriteLimited}
+        urlError={urlError}
         onToggleOpen={() => setIsSidebarOpen((open) => !open)}
         onClearAll={handleClearAll}
         onSelectSeat={setSelectedSeatId}

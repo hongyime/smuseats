@@ -76,9 +76,32 @@ Open the URL Vite prints in your terminal (usually `http://localhost:5173`).
 npm run lint      # ESLint check
 npm run validate:registry   # Registry shape checks
 npm run check     # lint + registry validation
-npm run build     # Production build → dist/
+npm run build     # TypeScript check, then production build → dist/
 npm run preview   # Serve the built output locally
 ```
+
+For the isolated sharing checks, install Python Playwright once with
+`python -m pip install playwright==1.60.0` and `python -m playwright install chromium`,
+then run `python tests/browser.py` after building. The script starts and closes its
+own local static server, uses synthetic seat names, and blocks external requests.
+CI runs the same suite on pull requests and application changes on main.
+
+### Sharing and browser history
+
+Selections remain in the existing compressed `?s=` URL format. Back/Forward follows
+the current link, and redirects to the room encoded in a shared selection preserve
+the full query and fragment. Names are visible to anyone with the link.
+
+Share copies the complete current selection. When it exceeds the existing
+1,800-character encoded-state limit, the app keeps the draft in the current tab,
+shows a warning and disables Share. Shorten names or remove seats to make it
+shareable; navigating away or reloading discards changes that could not fit in the
+link. Clipboard denial shows a message and allows another attempt. Invalid or
+oversized incoming selections are reported instead of silently appearing saved.
+
+This app does not create Supabase records or poll a cloud service. Floor plans and
+the seat registry remain bundled files; hosting and data migration are separate
+portfolio maintenance work.
 
 ---
 

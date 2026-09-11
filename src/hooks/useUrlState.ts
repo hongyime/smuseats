@@ -6,7 +6,8 @@
  * the hook reads the URL, decompresses the state, and returns the
  * seat map so the room view can highlight the correct seats.
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string';
 
 const QUERY_PARAM_KEY = 's';
@@ -45,86 +46,96 @@ const isSessionState = (value: unknown): value is SessionState => {
   return typeof candidate.r === 'string' && isSeatDataMap(candidate.d);
 };
 
-const decodeSessionState = (encoded: string | null): SessionState => {
-  if (!encoded) {
-    return DEFAULT_SESSION_STATE;
+const decodeSessionState = (encoded: string | null): SessionState | null => {
+  if (!encoded || encoded.length > MAX_ENCODED_STATE_LENGTH) {
+    return null;
   }
 
   try {
     const decompressed = decompressFromEncodedURIComponent(encoded);
     if (!decompressed) {
-      return DEFAULT_SESSION_STATE;
+      return null;
     }
 
     const parsed = JSON.parse(decompressed) as unknown;
     if (!isSessionState(parsed)) {
-      return DEFAULT_SESSION_STATE;
+      return null;
     }
 
     return parsed;
   } catch {
-    return DEFAULT_SESSION_STATE;
+    return null;
   }
 };
 
 const encodeSessionState = (state: SessionState): string =>
   compressToEncodedURIComponent(JSON.stringify(state));
 
-const readSessionFromUrl = (): SessionState => {
-  if (typeof window === 'undefined') {
-    return DEFAULT_SESSION_STATE;
-  }
-
-  const params = new URLSearchParams(window.location.search);
-  return decodeSessionState(params.get(QUERY_PARAM_KEY));
-};
-
-const writeSessionToUrl = (state: SessionState): boolean => {
-  if (typeof window === 'undefined') {
-    return true;
-  }
-
-  const encoded = encodeSessionState(state);
-  if (encoded.length > MAX_ENCODED_STATE_LENGTH) {
-    return false;
-  }
-
-  const params = new URLSearchParams(window.location.search);
-  params.set(QUERY_PARAM_KEY, encoded);
-  const query = params.toString();
-  const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
-  window.history.replaceState(window.history.state, '', nextUrl);
-  return true;
-};
-
 export interface UseUrlStateResult {
   state: SessionState;
   isUrlWriteLimited: boolean;
-  setRoomId: (roomId: string) => void;
+  shareUrl: string | null;
+  urlError: string | null;
   setSeatData: (seatData: SeatDataMap) => void;
   setSeatValue: (seatId: string, value: SeatValue | undefined) => void;
   clearState: () => void;
 }
 
-export const useUrlState = (): UseUrlStateResult => {
-  const [state, setState] = useState<SessionState>(() => readSessionFromUrl());
-  const [isUrlWriteLimited, setIsUrlWriteLimited] = useState(false);
+export const useUrlState = (roomId: string): UseUrlStateResult => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [draft, setDraft] = useState<{
+    location: typeof location;
+    state: SessionState;
+    error: string | null;
+  } | null>(null);
+  const decoded = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const parsed = decodeSessionState(params.get(QUERY_PARAM_KEY));
+    return {
+      state: parsed ? { ...parsed, r: parsed.r || roomId } : { r: roomId, d: {} },
+      invalid: params.has(QUERY_PARAM_KEY) && !parsed,
+    };
+  }, [location.search, roomId]);
+  const currentDraft = draft?.location === location ? draft : null;
+  const state = currentDraft?.state ?? decoded.state;
+  const encoded = useMemo(() => encodeSessionState(state), [state]);
+  const isUrlWriteLimited = encoded.length > MAX_ENCODED_STATE_LENGTH;
+  const urlError = currentDraft ? currentDraft.error : (decoded.invalid
+    ? 'This link contains an invalid or oversized selection. Select seats to start a new link.'
+    : null);
+
+  // A new history entry owns its selection; a previous unsaved draft must not
+  // overwrite Back/Forward or a different room. No polling is needed.
+  useEffect(() => setDraft(null), [location]);
+
+  const shareUrl = useMemo(() => {
+    if (urlError || isUrlWriteLimited || typeof window === 'undefined') return null;
+    const url = new URL(`${location.pathname}${location.search}${location.hash}`, window.location.origin);
+    url.searchParams.set(QUERY_PARAM_KEY, encoded);
+    return url.toString();
+  }, [encoded, isUrlWriteLimited, location, urlError]);
 
   const updateState = useCallback((updater: (prev: SessionState) => SessionState) => {
-    setState((prev) => {
-      const next = updater(prev);
-      const didWrite = writeSessionToUrl(next);
-      setIsUrlWriteLimited(!didWrite);
-      return next;
-    });
-  }, []);
-
-  const setRoomId = useCallback(
-    (roomId: string) => {
-      updateState((prev) => ({ ...prev, r: roomId }));
-    },
-    [updateState],
-  );
+    const next = updater(state);
+    const nextEncoded = encodeSessionState(next);
+    if (nextEncoded.length > MAX_ENCODED_STATE_LENGTH) {
+      setDraft({ location, state: next, error: 'Selection too large to share. Shorten names or remove seats. These changes are only in this tab.' });
+      return;
+    }
+    const params = new URLSearchParams(location.search);
+    params.set(QUERY_PARAM_KEY, nextEncoded);
+    try {
+      // BrowserRouter schedules location updates as transitions. Keep the input
+      // value current immediately so fast typing cannot lose intermediate keys.
+      setDraft({ location, state: next, error: null });
+      // Navigate through the router so its location, history metadata and UI
+      // agree. This runs in the event handler, never in a React state updater.
+      void navigate({ pathname: location.pathname, search: `?${params}`, hash: location.hash }, { replace: true, state: location.state });
+    } catch {
+      setDraft({ location, state: next, error: 'Unable to save this selection in the link. Your changes are only in this tab; edit again to retry.' });
+    }
+  }, [location, navigate, state]);
 
   const setSeatData = useCallback(
     (seatData: SeatDataMap) => {
@@ -151,24 +162,18 @@ export const useUrlState = (): UseUrlStateResult => {
   );
 
   const clearState = useCallback(() => {
-    // Reset local session state and remove URL-backed state parameter.
-    setState(DEFAULT_SESSION_STATE);
-
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      url.searchParams.delete(QUERY_PARAM_KEY);
-      window.history.replaceState(null, '', url.toString());
-    }
-  }, [setState]);
+    updateState(() => ({ ...DEFAULT_SESSION_STATE, r: roomId }));
+  }, [roomId, updateState]);
   return useMemo(
     () => ({
       state,
       isUrlWriteLimited,
-      setRoomId,
+      shareUrl,
+      urlError,
       setSeatData,
       setSeatValue,
       clearState,
     }),
-    [clearState, isUrlWriteLimited, setRoomId, setSeatData, setSeatValue, state],
+    [clearState, isUrlWriteLimited, shareUrl, urlError, setSeatData, setSeatValue, state],
   );
 };
