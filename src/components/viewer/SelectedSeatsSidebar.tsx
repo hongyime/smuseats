@@ -23,6 +23,7 @@ interface SelectedSeatsSidebarProps {
   selectedSeatId?: string;
   selectedEntries: SelectedSeatEntry[];
   isUrlWriteLimited: boolean;
+  urlError: string | null;
   onToggleOpen: () => void;
   onClearAll: () => void;
   onSelectSeat: (seatId: string | undefined) => void;
@@ -34,6 +35,7 @@ function SelectedSeatsSidebarComponent({
   selectedSeatId,
   selectedEntries,
   isUrlWriteLimited,
+  urlError,
   onToggleOpen,
   onClearAll,
   onSelectSeat,
@@ -45,6 +47,9 @@ function SelectedSeatsSidebarComponent({
         className="sidebar-toggle"
         onClick={onToggleOpen}
         title={isOpen ? 'Hide selected seats' : 'Show selected seats'}
+        aria-label={isOpen ? 'Hide selected seats' : 'Show selected seats'}
+        aria-expanded={isOpen}
+        aria-controls="selected-seats-panel"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -68,7 +73,7 @@ function SelectedSeatsSidebarComponent({
         )}
       </button>
 
-      <div className="sidebar-content">
+      <div className="sidebar-content" id="selected-seats-panel" inert={!isOpen} aria-hidden={!isOpen}>
         <div className="reserved-list">
           <div className="reserved-list__header">
             <span>Selected ({selectedEntries.length})</span>
@@ -99,6 +104,7 @@ function SelectedSeatsSidebarComponent({
                   className="reserved-list__name-input"
                   value={name ?? ''}
                   placeholder="Add name…"
+                  aria-label={`Name for seat ${seatId}`}
                   onClick={(e) => e.stopPropagation()}
                   onBlur={() => window.scrollTo(0, 0)}
                   onChange={(e) => {
@@ -110,6 +116,7 @@ function SelectedSeatsSidebarComponent({
                   type="button"
                   className="reserved-list__remove"
                   title="Remove seat"
+                  aria-label={`Remove seat ${seatId}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     onSetSeatValue(seatId, undefined);
@@ -123,7 +130,7 @@ function SelectedSeatsSidebarComponent({
           )}
 
           <div className="room-view-footer sidebar-footer">
-            <span>{isUrlWriteLimited ? 'Selection too large to fully save in URL' : 'State is saved in the URL'}</span>
+            <span>{isUrlWriteLimited ? 'Selection too large to fully save in URL' : urlError ? 'Selection is not saved in the link' : 'State is saved in the URL'}</span>
           </div>
         </div>
       </div>

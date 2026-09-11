@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npx vite build",
-    "build:full": "npx tsc -b; npx vite build",
+    "build": "tsc -b && vite build",
+    "build:full": "npm run build",
     "lint": "eslint .",
     "validate:registry": "node scripts/validate-registry.mjs",
     "check": "npm run lint && npm run validate:registry",
