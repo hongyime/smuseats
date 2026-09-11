@@ -112,6 +112,14 @@ jobs:
       - name: Verify room sharing and browser history
         run: python tests/browser.py
 
+      - name: Build isolated contributor editor fixture
+        env:
+          VITE_ENABLE_EDITOR: 'true'
+        run: npx vite build --outDir dist-editor
+
+      - name: Verify pointer cancellation, coordinate bounds and map gestures
+        run: python tests/editor.py
+
       - name: Preserve compiled application and browser evidence
         uses: actions/upload-artifact@v4
         with:
@@ -121,6 +129,7 @@ jobs:
             dist/index.html
             dist/assets/
             browser-results/
+            editor-results/results.json
 
       - name: Build succeeded
         if: steps.detect.outputs.has_build == 'true'
