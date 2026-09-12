@@ -9,7 +9,7 @@
 import { useCallback, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import registry from '../data/registry.json';
+import registry from 'virtual:room-catalog';
 import {
   BUILDING_CONFIG,
   BUILDING_ORDER,
@@ -34,7 +34,7 @@ const RoomsPage = () => {
     (): RoomWithMeta[] =>
       registry.rooms.map((room) => ({
         id: room.id,
-        meta: extractMeta(room.image, room.seats.length),
+        meta: extractMeta(room.image, room.seatCount),
       })),
     [],
   );
@@ -98,6 +98,7 @@ const RoomsPage = () => {
           if (value) params.set(key, value);
           else params.delete(key);
           if (key === 'building') {
+            params.delete('floor');
             params.delete('type');
           }
           if (key === 'floor') params.delete('type');

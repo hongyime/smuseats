@@ -9,7 +9,7 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 
-import registry from '../data/registry.json';
+import registry from 'virtual:room-catalog';
 import { BUILDING_CONFIG, BUILDING_ORDER } from '../utils/roomMeta';
 
 const Home = () => {
@@ -19,7 +19,7 @@ const Home = () => {
     registry.rooms.forEach((room) => {
       const building = room.image.replace(/^\/maps(?:-masked)?\//, '').split(' ')[0];
       buildingCounts.set(building, (buildingCounts.get(building) ?? 0) + 1);
-      totalSeats += room.seats.length;
+      totalSeats += room.seatCount;
     });
     return { totalRooms: registry.rooms.length, totalSeats, buildingCounts };
   }, []);

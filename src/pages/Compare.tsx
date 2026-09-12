@@ -15,7 +15,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import registry from '../data/registry.json';
+import registry from 'virtual:room-catalog';
 
 /* ------------------------------------------------------------------ */
 /*  Pick a deterministic-but-varied sample image                       */
@@ -23,7 +23,7 @@ import registry from '../data/registry.json';
 
 const SAMPLE_IMAGE = (() => {
   const rooms = registry.rooms.filter((r) => r.image);
-  const good = rooms.filter((r) => r.seats.length > 20);
+  const good = rooms.filter((r) => r.seatCount > 20);
   const pool = good.length > 0 ? good : rooms;
   const day = Math.floor(Date.now() / 86_400_000);
   return pool[day % pool.length];

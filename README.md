@@ -103,6 +103,16 @@ This app does not create Supabase records or poll a cloud service. Floor plans a
 the seat registry remain bundled files; hosting and data migration are separate
 portfolio maintenance work.
 
+The homepage and room browser use a small catalog generated from the registry.
+Detailed coordinates load when a room or contributor editor is opened. Failed
+route loads offer a reload while retaining the current selection URL. Changing
+buildings clears the previous floor/type filters.
+
+Production builds preserve the original and masked public floor plans. Diagnostic
+overlays under `public/maps/debug` remain in the repository and development server,
+but are excluded from deployment. Run `python tests/loading.py` after building to
+check asset preservation, loading budgets, room filters and failed-load recovery.
+
 ---
 
 ## Deploying to Vercel

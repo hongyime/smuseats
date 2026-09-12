@@ -4,6 +4,8 @@ editor-results/
 .DS_Store
 dist
 browser-results/
+loading-results/
+__pycache__/
 *.local
 
 
