@@ -1611,3 +1611,12 @@ body::-webkit-scrollbar {
 		align-items: flex-start;
 	}
 }
+/* Loading and recoverable route failures retain the surrounding site controls. */
+.route-status {
+  max-width: 48rem;
+  margin: 3rem auto;
+  padding: 1.5rem;
+}
+.route-status .btn {
+  margin: 0.5rem 0.5rem 0.5rem 0;
+}

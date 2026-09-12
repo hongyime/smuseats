@@ -9,25 +9,33 @@
  *   /compare  → Image-processing comparison sandbox (Compare)
  *   *         → Fallback redirect to /
  */
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
-import RoomView from './pages/RoomView';
-import RoomsPage from './pages/RoomsPage';
-import EditSeats from './pages/EditSeats';
-import Compare from './pages/Compare';
+import { RouteErrorBoundary } from './components/RouteErrorBoundary';
+
+const RoomView = lazy(() => import('./pages/RoomView'));
+const RoomsPage = lazy(() => import('./pages/RoomsPage'));
+const EditSeats = lazy(() => import('./pages/EditSeats'));
+const Compare = lazy(() => import('./pages/Compare'));
 
 const App = () => {
   const isEditorEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_EDITOR === 'true';
+  const location = useLocation();
 
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/rooms" element={<RoomsPage />} />
-      <Route path="/room/:roomId" element={<RoomView />} />
-      <Route path="/edit" element={isEditorEnabled ? <EditSeats /> : <Navigate to="/" replace />} />
-      <Route path="/compare" element={<Compare />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <RouteErrorBoundary key={location.pathname}>
+      <Suspense fallback={<main className="route-status" role="status">Loading page…</main>}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/rooms" element={<RoomsPage />} />
+          <Route path="/room/:roomId" element={<RoomView />} />
+          <Route path="/edit" element={isEditorEnabled ? <EditSeats /> : <Navigate to="/" replace />} />
+          <Route path="/compare" element={<Compare />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+    </RouteErrorBoundary>
   );
 };
 

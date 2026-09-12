@@ -1,5 +1,19 @@
 # SMU Seats maintenance
 
+## Loading and filter task list — 2026-09-13
+
+- [x] Measure homepage/route JavaScript and diagnostic build outputs; reproduce incompatible building/floor selection.
+- [x] Defer detailed route data and exclude diagnostic-only build outputs while preserving all source files and public floor plans.
+- [x] Repair confirmed filter behavior and verify registry, sharing, contributor, routing and failed-load behavior.
+- [ ] Release through hosted checks to existing production with the contributor editor disabled.
+- [ ] Verify preservation and update Markdown and hosted PostPlan.
+
+The branch starts from current main `ecd952b`. The previous editor/gesture release is already verified in production. All 611 original tracked files were hashed before this rotation. No Supabase writes or data migration are part of these loading fixes; those portfolio tasks remain open.
+
+Baseline desktop/mobile checks reproduce the 432,946-byte homepage script and incompatible floor filter. The first type-checked build/lint/registry checks pass. Browsing uses derived metadata; detailed coordinates are deferred to room/editor chunks, and 197 diagnostic overlay files are excluded only from build output. Existing public originals and masked floor plans remain. New route-failure recovery and existing sharing/editor browser checks are running before release.
+
+Final local validation: ten loading/filter/recovery cases, fourteen sharing cases and sixteen editor/gesture cases pass; lint, type-checked production build and all 98 registry checks pass. Homepage JavaScript is 258,295 bytes (40.3% smaller). Public build files are 94,846,355 bytes (59.0% smaller); all 200 non-diagnostic public files match source bytes. All 611 original tracked files are unchanged before synchronization. No dependency or committed data edits. Hosted checks and production verification are next.
+
 Released through [PR #187](https://github.com/hongyime/smuseats/pull/187), main application commit `401e0c7f598f0190dec1f8653508c71ec4448edb`.
 
 - Production: Vercel deployment `dpl_Gku9AwUANC4YaPEKUGecK931jg1H` is READY. Fourteen browser scenarios pass at smuseats.hong-yi.me and three mobile checks pass at smuseats.vercel.app. All sixteen compiled-file, selected floor-plan and direct-route comparisons match the main CI artifact/source.

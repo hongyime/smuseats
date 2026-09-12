@@ -112,6 +112,9 @@ jobs:
       - name: Verify room sharing and browser history
         run: python tests/browser.py
 
+      - name: Verify loading budget, public assets and route recovery
+        run: python tests/loading.py
+
       - name: Build isolated contributor editor fixture
         env:
           VITE_ENABLE_EDITOR: 'true'
@@ -130,6 +133,8 @@ jobs:
             dist/assets/
             browser-results/
             editor-results/results.json
+            loading-results/results.json
+            loading-results/artifacts.json
 
       - name: Build succeeded
         if: steps.detect.outputs.has_build == 'true'
