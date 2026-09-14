@@ -40,7 +40,6 @@ on:
       - "**/package-lock.json"
       - "**/requirements*.txt"
       - "**/pyproject.toml"
-      - ".github/workflows/codeql.yml"
   schedule:
     - cron: "0 14 * * 3" # Weekly Wed 10 PM SGT (off Monday spike)
 
@@ -59,15 +58,11 @@ jobs:
   # did a full checkout (~30-60s each) before exiting — ~100 wasted min/week
   # on push-heavy private repos like unifiedcollector.
   detect:
-    # This repository uses GitHub default setup (CODEQL_SETUP=default).
-    # Its default scans remain active. Clear/change that repository variable
-    # when intentionally switching to this advanced workflow. Checking the
-    # default-setup API here would require admin access the workflow lacks.
-    if: github.event.repository.private == false && vars.CODEQL_SETUP != 'default'
+    if: github.event.repository.private == false
     runs-on: ubuntu-latest
     outputs:
-      languages: ${{ steps.langs.outputs.languages || '[]' }}
-      any: ${{ steps.langs.outputs.any || 'false' }}
+      languages: ${{ steps.langs.outputs.languages }}
+      any: ${{ steps.langs.outputs.any }}
     steps:
       - uses: actions/checkout@v7
       - name: Detect languages
