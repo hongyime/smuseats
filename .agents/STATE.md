@@ -38,3 +38,7 @@ Cancelled or lost pointer capture previously committed contributor edits; keyboa
 Sixteen contributor/gesture browser cases and fourteen existing sharing cases pass at desktop/mobile widths. Lint, registry checks and the production build pass. All 400 original data/asset files retain their bytes and the committed data is unchanged; four fresh-checkout text files use the LF endings required by .gitattributes, with identical content. All 98 rooms and 6,364 seats remain intact.
 
 The contributor editor remains disabled in production. CI enables it only for an isolated dist-editor fixture and uploads compact result evidence. Hosted checks and production verification follow. Shared styling and wider interaction review remain open.
+
+## Privacy maintenance - 2026-09-27
+
+Remove the optional personal security contact while retaining private vulnerability-reporting guidance. The narrow documentation patch is prepared from the current default branch; staged whitespace and the inherited identity hook are publication checks. Application behavior is unchanged.
