@@ -10,3 +10,5 @@
 - 2026-09-11: PR #187 merged and production verified: fourteen custom-domain scenarios, three Vercel-domain mobile checks and sixteen file/route comparisons pass. Main CI passes, default CodeQL remains active and the dependency alert is fixed. Preserve the 98-room/6,364-seat registry and continue the broader portfolio rotation.
 
 - 2026-09-11: Reproduced cancelled/lost-capture edits, out-of-bounds keyboard nudges and stationary two-finger map translation. Preserve the 98-room registry and production editor flag; validate fixes with 16 isolated editor/gesture and 14 existing sharing browser cases. Original data bytes and committed content are unchanged; checkout-only LF normalization is documented.
+
+- 2026-09-27: Remove the optional personal security contact and preserve private reporting guidance through a reviewed maintenance pull request.
